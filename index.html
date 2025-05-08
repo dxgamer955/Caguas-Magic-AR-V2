@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AR WebApp</title>
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Precargar A-Frame -->
+    <link rel="preload" href="https://aframe.io/releases/1.4.0/aframe.min.js" as="script">
+    <link rel="preload" href="https://cdn.jsdelivr.net/gh/aframevr/aframe@1.4.0/dist/aframe-master.min.js" as="script">
+</head>
+<body>
+    <div id="loading-screen">
+        <div class="spinner"></div>
+        <p>Cargando experiencia AR...</p>
+        <button id="start-button">Comenzar</button>
+        <div id="error-message" style="color: red; margin-top: 20px; display: none;"></div>
+    </div>
+  
+    <div id="status-panel" style="position: fixed; top: 10px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 10px; border-radius: 5px; z-index: 1000;">
+        <h3>Estado del Sistema AR</h3>
+        <div id="aframe-status">🔄 A-Frame: Cargando...</div>
+        <div id="arjs-status">🔄 AR.js: Cargando...</div>
+        <div id="marker-status-ui">🔄 Componentes de marcador: No inicializados</div>
+        <div id="camera-status">📷 Cámara: Esperando acceso...</div>
+    </div>
+
+    <!-- CDN de respaldo implementado -->
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <script>window.AFRAME || document.write('<script src="https://cdn.jsdelivr.net/gh/aframevr/aframe@1.4.0/dist/aframe-master.min.js"><\/script>')</script>
+    
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+
+    <a-scene 
+        vr-mode-ui="enabled: false" 
+        embedded 
+        arjs="sourceType: webcam; debugUIEnabled: false;"
+    >
+        <!-- Componentes de interacción -->
+        <a-entity 
+            cursor="rayOrigin: mouse" 
+            raycaster="objects: [rotate-on-click]"
+        ></a-entity>
+
+        <a-assets>
+            <!-- Precarga el modelo 3D 
+            <a-asset-item 
+                id="modelo-3d" 
+                src="/models/hongo.glb"
+            ></a-asset-item>
+              -->
+        </a-assets>
+
+        <!-- Sistema de Iluminación -->
+        <a-entity light="type: ambient; color: #888; intensity: 0.5"></a-entity>
+        <a-entity light="type: directional; color: #fff; intensity: 0.3" position="-1 1 0.5"></a-entity>
+        <a-entity light="type: point; color: #fff; intensity: 1.5" position="1 0.5 0" distance="3"></a-entity>
+        <a-entity light="type: hemisphere; color: #fff; groundColor: #777; intensity: 0.6"></a-entity>
+
+        <a-assets>
+            <!-- Modelos 3D -->
+            <a-asset-item id="modelo-3d" src="models/MORIVIVI.glb"></a-asset-item>
+            <a-asset-item id="modelo-boo" src="models/zumbadorcito_noshader.glb"></a-asset-item>
+            <a-asset-item id="modelo-star" src="models/flamboyan.glb"></a-asset-item>
+            <a-asset-item id="modelo-c3tk" src="models/C3TK.glb"></a-asset-item>
+            <a-asset-item id="modelo-alcal" src="models/ALCALDIA.glb"></a-asset-item>
+            <a-asset-item id="modelo-centr" src="models/CENTRO.glb"></a-asset-item>
+            <a-asset-item id="modelo-india" src="models/INDIA.glb"></a-asset-item>
+            <a-asset-item id="modelo-jung" src="models/jungle_gurdian.glb"></a-asset-item>
+            <a-asset-item id="modelo-pitirre" src="models/PITIRRE.glb"></a-asset-item>
+            <a-asset-item id="modelo-reloj" src="models/RELOJ.glb"></a-asset-item>
+            <a-asset-item id="modelo-willie" src="models/WILLIAM.glb"></a-asset-item>
+            <a-asset-item id="modelo-uagm" src="models/UAGM.glb"></a-asset-item>
+        </a-assets>
+        
+        <!-- Marcador Mori -->
+        <a-marker
+            type="pattern"
+            url="patterns/pattern-QRAR_MORI.patt"
+            emitevents="true"
+            id="main-marker"
+        >
+            <a-entity
+                gltf-model="#modelo-3d"
+                rotate-on-touch="sensitivity: 1.5; enableY: true"
+                cursor-listener
+                scale="0.2 0.2 0.2"
+                position="0 0 0"
+                rotation="0 0 0"
+                id="model-entity"
+                shadow="cast: true; receive: true"
+            ></a-entity>
+        </a-marker>
+        <!---->
+        <!-- Marcador ZUMB -->
+        <a-marker
+            type="pattern"
+            url="patterns/pattern-QRAR_ZUMB.patt"
+            emitevents="true"
+            id="marker-boo"
+        >
+            <a-entity
+                gltf-model="#modelo-boo"
+                scale="0.1 0.1 0.1"
+                position="0 0 0"
+                rotation="0 0 0"
+                id="entity-zumb"
+                shadow="cast: true; receive: true"
+            ></a-entity>
+        </a-marker>
+      
+      <!-- Marcador Flamb -->
+        <a-marker
+            type="pattern"
+            url="patterns/pattern-QRAR_FLAMB.patt"
+            emitevents="true"
+            id="marker-flamb"
+        >
+            <a-entity
+                gltf-model="#modelo-star"
+                scale="0.1 0.1 0.1"
+                position="0 0 0"
+                rotation="0 0 0"
+                id="entity-flamb"
+                shadow="cast: true; receive: true"
+            ></a-entity>
+        </a-marker>
+
+        <!-- Marcador C3tek -->
+        <a-marker
+            type="pattern"
+            url="patterns/pattern-qr_c3tk.patt"
+            emitevents="true"
+            id="marker-c3tk"
+        >
+            <a-entity
+                gltf-model="#modelo-c3tk"
+                scale="0.2 0.2 0.2"
+                position="0 0 0"
+                rotation="0 0 0"
+                id="entity-c3tk"
+                shadow="cast: true; receive: true"
+            ></a-entity>
+        </a-marker>
+
+        <!-- Marcador Alcaldia -->
+        <a-marker
+            type="pattern"
+            url="patterns/pattern-qr_alcal.patt"
+            emitevents="true"
+            id="marker-alcal"
+        >
+            <a-entity
+                gltf-model="#modelo-alcal"
+                scale="0.1 0.1 0.1"
+                position="0 0 0"
+                rotation="0 0 0"
+                id="entity-alcal"
+                shadow="cast: true; receive: true"
+            ></a-entity>
+        </a-marker>
+
+        
+        <!-- Marcador CENTRO -->
+        <a-marker
+            type="pattern"
+            url="patterns/pattern-qr_centr.patt"
+            emitevents="true"
+            id="marker-centr"
+        >
+            <a-entity
+                gltf-model="#modelo-centr"
+                scale="0.1 0.1 0.1"
+                position="0 0 0"
+                rotation="0 0 0"
+                id="entity-centr"
+                shadow="cast: true; receive: true"
+            ></a-entity>
+        </a-marker>
+
+
+        <!-- Marcador INDIA -->
+        <a-marker
+            type="pattern"
+            url="patterns/pattern-qr_india.patt"
+            emitevents="true"
+            id="marker-india"
+        >
+            <a-entity
+                gltf-model="#modelo-india"
+                scale="0.2 0.2 0.2"
+                position="0 0 0"
+                rotation="0 0 0"
+                id="entity-india"
+                shadow="cast: true; receive: true"
+            ></a-entity>
+        </a-marker>
+        
+         <!-- Marcador Jungle Guardian -->
+         <a-marker
+         type="pattern"
+         url="patterns/pattern-qr_jung.patt"
+         emitevents="true"
+         id="marker-jung"
+     >
+         <a-entity
+             gltf-model="#modelo-jung"
+             scale="0.2 0.2 0.2"
+             position="0 0 0"
+             rotation="0 0 0"
+             id="entity-jung"
+             shadow="cast: true; receive: true"
+         ></a-entity>
+     </a-marker>
+
+     <!-- Marcador Pitirre -->
+     <a-marker
+     type="pattern"
+     url="patterns/pattern-qr_piti2.patt"
+     emitevents="true"
+     id="marker-pitirre"
+ >
+     <a-entity
+         gltf-model="#modelo-pitirre"
+         scale="0.2 0.2 0.2"
+         position="0 0 0"
+         rotation="0 0 0"
+         id="entity-pitirre"
+         shadow="cast: true; receive: true"
+     ></a-entity>
+ </a-marker>
+
+   <!-- Marcador Reloj -->
+   <a-marker
+   type="pattern"
+   url="patterns/pattern-qr_reloj.patt"
+   emitevents="true"
+   id="marker-reloj"
+>
+   <a-entity
+       gltf-model="#modelo-reloj"
+       scale="0.1 0.1 0.1"
+       position="0 0 0"
+       rotation="0 0 0"
+       id="entity-reloj"
+       shadow="cast: true; receive: true"
+   ></a-entity>
+</a-marker>
+
+   <!-- Marcador William -->
+   <a-marker
+   type="pattern"
+   url="patterns/pattern-qr_william.patt"
+   emitevents="true"
+   id="marker-willie"
+>
+   <a-entity
+       gltf-model="#modelo-willie"
+       scale="0.1 0.1 0.1"
+       position="0 0 0"
+       rotation="0 0 0"
+       id="entity-willie"
+       shadow="cast: true; receive: true"
+   ></a-entity>
+</a-marker>
+
+ <!-- Marcador UAGM -->
+ <a-marker
+ type="pattern"
+ url="patterns/pattern-qr_uagm.patt"
+ emitevents="true"
+ id="marker-uagm"
+>
+ <a-entity
+     gltf-model="#modelo-uagm"
+     scale="0.2 0.2 0.2"
+     position="0 0 0"
+     rotation="0 0 0"
+     id="entity-uagm"
+     shadow="cast: true; receive: true"
+ ></a-entity>
+</a-marker>
+
+        <a-entity camera></a-entity>
+    </a-scene>
+
+    <!-- Script con verificación de carga -->
+    <script src="ar-script.js"></script>
+</body>
+</html>
