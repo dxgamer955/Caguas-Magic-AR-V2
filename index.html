@@ -1,291 +1,243 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AR WebApp</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Caguas Magic AR V2</title>
+  
+  <!-- Three.js y MindAR -->
+  <script src="https://unpkg.com/three@0.136.0/build/three.min.js"></script>
+  <script src="https://unpkg.com/mind-ar@1.1.4/dist/mindar-image-three.prod.js"></script>
+  <script src="https://unpkg.com/three@0.136.0/examples/js/loaders/GLTFLoader.js"></script>
+  
+  <style>
+    body { 
+      margin: 0; 
+      overflow: hidden; 
+      font-family: Arial, sans-serif;
+    }
     
-    <!-- Precargar A-Frame -->
-    <link rel="preload" href="https://aframe.io/releases/1.4.0/aframe.min.js" as="script">
-    <link rel="preload" href="https://cdn.jsdelivr.net/gh/aframevr/aframe@1.4.0/dist/aframe-master.min.js" as="script">
+    #ar-container { 
+      width: 100vw; 
+      height: 100vh; 
+      position: relative; 
+    }
+    
+    #loading-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.8);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      color: white;
+    }
+    
+    .spinner {
+      border: 5px solid #f3f3f3;
+      border-top: 5px solid #3498db;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    #start-button {
+      padding: 10px 20px;
+      background: #3498db;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+    
+    #start-button:hover {
+      background: #2980b9;
+    }
+    
+    #status-panel {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      background: rgba(0,0,0,0.7);
+      color: white;
+      padding: 10px;
+      border-radius: 5px;
+      z-index: 1000;
+    }
+    
+    #error-message {
+      color: red;
+      margin-top: 20px;
+      display: none;
+      text-align: center;
+      max-width: 80%;
+    }
+  </style>
 </head>
 <body>
-    <div id="loading-screen">
-        <div class="spinner"></div>
-        <p>Cargando experiencia AR...</p>
-        <button id="start-button">Comenzar</button>
-        <div id="error-message" style="color: red; margin-top: 20px; display: none;"></div>
-    </div>
-  
-    <div id="status-panel" style="position: fixed; top: 10px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 10px; border-radius: 5px; z-index: 1000;">
-        <h3>Estado del Sistema AR</h3>
-        <div id="aframe-status">🔄 A-Frame: Cargando...</div>
-        <div id="arjs-status">🔄 AR.js: Cargando...</div>
-        <div id="marker-status-ui">🔄 Componentes de marcador: No inicializados</div>
-        <div id="camera-status">📷 Cámara: Esperando acceso...</div>
-    </div>
+  <!-- Pantalla de carga -->
+  <div id="loading-screen">
+    <div class="spinner"></div>
+    <p>Cargando experiencia AR...</p>
+    <button id="start-button">Comenzar Experiencia AR</button>
+    <div id="error-message"></div>
+  </div>
 
-    <!-- CDN de respaldo implementado -->
-    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
-    <script>window.AFRAME || document.write('<script src="https://cdn.jsdelivr.net/gh/aframevr/aframe@1.4.0/dist/aframe-master.min.js"><\/script>')</script>
+  <!-- Panel de estado -->
+  <div id="status-panel">
+    <h3>Estado del Sistema AR</h3>
+    <div id="aframe-status">✅ Three.js: Cargado</div>
+    <div id="mindar-status">✅ MindAR: Cargado</div>
+    <div id="marker-status-ui">🔄 Componentes de marcador: No inicializados</div>
+    <div id="camera-status">📷 Cámara: Esperando acceso...</div>
+  </div>
+
+  <!-- Contenedor AR -->
+  <div id="ar-container"></div>
+
+  <script>
+    // Modelos a cargar
+    const models = [
+      { id: 'alcal', path: 'models/ALCALDIA.glb', scale: 0.1, targetIndex: 0 },
+      { id: 'c3tk', path: 'models/C3TK.glb', scale: 0.2, targetIndex: 1 },
+      { id: 'centr', path: 'models/CENTRO.glb', scale: 0.1, targetIndex: 2 },
+      { id: 'star', path: 'models/flamboyan.glb', scale: 0.1, targetIndex: 3 },
+      { id: 'jung', path: 'models/jungle_gurdian.glb', scale: 0.2, targetIndex: 4 },
+      { id: 'india', path: 'models/INDIA.glb', scale: 0.2, targetIndex: 5 },
+      { id: 'morivivi', path: 'models/MORIVIVI.glb', scale: 0.2, targetIndex: 6 },
+      { id: 'pitirre', path: 'models/PITIRRE.glb', scale: 0.2, targetIndex: 7 },
+      { id: 'reloj', path: 'models/RELOJ.glb', scale: 0.1, targetIndex: 8 },
+      { id: 'uagm', path: 'models/UAGM.glb', scale: 0.2, targetIndex: 9 },
+      { id: 'willie', path: 'models/WILLIAM.glb', scale: 0.1, targetIndex: 10 },
+      { id: 'boo', path: 'models/zumbadorcito_noshader.glb', scale: 0.1, targetIndex: 11 }
+    ];
+
+    // Variables globales
+    let mindarThree;
+    let mixers = [];
+    const modelMap = {};
+    const loader = new THREE.GLTFLoader();
+
+    // Función para iniciar AR
+    const startAR = async () => {
+      try {
+        const loadingScreen = document.getElementById('loading-screen');
+        const errorMessage = document.getElementById('error-message');
+        
+        // Actualizar estado de la cámara
+        document.getElementById('camera-status').textContent = '📷 Cámara: Solicitando acceso...';
+        
+        // Verificar compatibilidad
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error('API de cámara no soportada en este navegador');
+        }
+        
+        // Crear instancia de MindAR
+        mindarThree = new window.MINDAR.IMAGE.MindARThree({
+          container: document.getElementById('ar-container'),
+          imageTargetSrc: 'targets.mind', // Asegúrate de que este archivo existe
+          maxTrack: 2 // Máximo de marcadores a detectar simultáneamente
+        });
+        
+        const { renderer, scene, camera } = mindarThree;
+        
+        // Configurar renderer
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        
+        // Configurar iluminación
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(0, 1, 1);
+        scene.add(directionalLight);
+        
+        // Cargar modelos y asignar a marcadores
+        for (const modelData of models) {
+          const anchor = mindarThree.addAnchor(modelData.targetIndex);
+          
+          loader.load(modelData.path, (gltf) => {
+            const model = gltf.scene;
+            model.scale.set(modelData.scale, modelData.scale, modelData.scale);
+            model.position.set(0, 0, 0);
+            anchor.group.add(model);
+            
+            // Manejar animaciones si existen
+            if (gltf.animations && gltf.animations.length > 0) {
+              const mixer = new THREE.AnimationMixer(model);
+              mixers.push(mixer);
+              
+              gltf.animations.forEach((clip) => {
+                const action = mixer.clipAction(clip);
+                action.play();
+              });
+            }
+            
+            modelMap[modelData.id] = model;
+          }, undefined, (error) => {
+            console.error(`Error cargando modelo ${modelData.path}:`, error);
+          });
+        }
+        
+        // Iniciar MindAR
+        await mindarThree.start();
+        document.getElementById('marker-status-ui').textContent = '✅ Componentes de marcador: Inicializados';
+        document.getElementById('camera-status').textContent = '✅ Cámara: Activa';
+        
+        // Ocultar pantalla de carga
+        loadingScreen.style.display = 'none';
+        
+        // Bucle de renderizado
+        const clock = new THREE.Clock();
+        renderer.setAnimationLoop(() => {
+          const delta = clock.getDelta();
+          mixers.forEach(mixer => mixer.update(delta));
+          renderer.render(scene, camera);
+        });
+        
+      } catch (error) {
+        console.error('Error al iniciar AR:', error);
+        const errorMessage = document.getElementById('error-message');
+        errorMessage.textContent = `Error: ${error.message}`;
+        errorMessage.style.display = 'block';
+        document.getElementById('camera-status').textContent = '❌ Cámara: Error de acceso';
+        
+        // Sugerencias para errores comunes
+        if (error.message.includes('targets.mind')) {
+          errorMessage.innerHTML += '<br>El archivo targets.mind no se encontró. Asegúrate de que existe en la ubicación correcta.';
+        } else if (error.message.includes('permission')) {
+          errorMessage.innerHTML += '<br>Por favor, permite el acceso a la cámara en la configuración de tu navegador.';
+        } else if (error.message.includes('https')) {
+          errorMessage.innerHTML += '<br>Nota: La cámara solo funciona en conexiones HTTPS o localhost.';
+        }
+      }
+    };
+
+    // Evento para el botón de inicio
+    document.getElementById('start-button').addEventListener('click', startAR);
     
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-
-    <a-scene 
-        vr-mode-ui="enabled: false" 
-        embedded 
-        arjs="sourceType: webcam; debugUIEnabled: false;"
-    >
-        <!-- Componentes de interacción -->
-        <a-entity 
-            cursor="rayOrigin: mouse" 
-            raycaster="objects: [rotate-on-click]"
-        ></a-entity>
-
-        <a-assets>
-            <!-- Precarga el modelo 3D 
-            <a-asset-item 
-                id="modelo-3d" 
-                src="/models/hongo.glb"
-            ></a-asset-item>
-              -->
-        </a-assets>
-
-        <!-- Sistema de Iluminación -->
-        <a-entity light="type: ambient; color: #888; intensity: 0.5"></a-entity>
-        <a-entity light="type: directional; color: #fff; intensity: 0.3" position="-1 1 0.5"></a-entity>
-        <a-entity light="type: point; color: #fff; intensity: 1.5" position="1 0.5 0" distance="3"></a-entity>
-        <a-entity light="type: hemisphere; color: #fff; groundColor: #777; intensity: 0.6"></a-entity>
-
-        <a-assets>
-            <!-- Modelos 3D -->
-            <a-asset-item id="modelo-3d" src="models/MORIVIVI.glb"></a-asset-item>
-            <a-asset-item id="modelo-boo" src="models/zumbadorcito_noshader.glb"></a-asset-item>
-            <a-asset-item id="modelo-star" src="models/flamboyan.glb"></a-asset-item>
-            <a-asset-item id="modelo-c3tk" src="models/C3TK.glb"></a-asset-item>
-            <a-asset-item id="modelo-alcal" src="models/ALCALDIA.glb"></a-asset-item>
-            <a-asset-item id="modelo-centr" src="models/CENTRO.glb"></a-asset-item>
-            <a-asset-item id="modelo-india" src="models/INDIA.glb"></a-asset-item>
-            <a-asset-item id="modelo-jung" src="models/jungle_gurdian.glb"></a-asset-item>
-            <a-asset-item id="modelo-pitirre" src="models/PITIRRE.glb"></a-asset-item>
-            <a-asset-item id="modelo-reloj" src="models/RELOJ.glb"></a-asset-item>
-            <a-asset-item id="modelo-willie" src="models/WILLIAM.glb"></a-asset-item>
-            <a-asset-item id="modelo-uagm" src="models/UAGM.glb"></a-asset-item>
-        </a-assets>
-        
-        <!-- Marcador Mori -->
-        <a-marker
-            type="pattern"
-            url="patterns/pattern-QRAR_MORI.patt"
-            emitevents="true"
-            id="main-marker"
-        >
-            <a-entity
-                gltf-model="#modelo-3d"
-                rotate-on-touch="sensitivity: 1.5; enableY: true"
-                cursor-listener
-                scale="0.2 0.2 0.2"
-                position="0 0 0"
-                rotation="0 0 0"
-                id="model-entity"
-                shadow="cast: true; receive: true"
-            ></a-entity>
-        </a-marker>
-        <!---->
-        <!-- Marcador ZUMB -->
-        <a-marker
-            type="pattern"
-            url="patterns/pattern-QRAR_ZUMB.patt"
-            emitevents="true"
-            id="marker-boo"
-        >
-            <a-entity
-                gltf-model="#modelo-boo"
-                scale="0.1 0.1 0.1"
-                position="0 0 0"
-                rotation="0 0 0"
-                id="entity-zumb"
-                shadow="cast: true; receive: true"
-            ></a-entity>
-        </a-marker>
-      
-      <!-- Marcador Flamb -->
-        <a-marker
-            type="pattern"
-            url="patterns/pattern-QRAR_FLAMB.patt"
-            emitevents="true"
-            id="marker-flamb"
-        >
-            <a-entity
-                gltf-model="#modelo-star"
-                scale="0.1 0.1 0.1"
-                position="0 0 0"
-                rotation="0 0 0"
-                id="entity-flamb"
-                shadow="cast: true; receive: true"
-            ></a-entity>
-        </a-marker>
-
-        <!-- Marcador C3tek -->
-        <a-marker
-            type="pattern"
-            url="patterns/pattern-qr_c3tk.patt"
-            emitevents="true"
-            id="marker-c3tk"
-        >
-            <a-entity
-                gltf-model="#modelo-c3tk"
-                scale="0.2 0.2 0.2"
-                position="0 0 0"
-                rotation="0 0 0"
-                id="entity-c3tk"
-                shadow="cast: true; receive: true"
-            ></a-entity>
-        </a-marker>
-
-        <!-- Marcador Alcaldia -->
-        <a-marker
-            type="pattern"
-            url="patterns/pattern-qr_alcal.patt"
-            emitevents="true"
-            id="marker-alcal"
-        >
-            <a-entity
-                gltf-model="#modelo-alcal"
-                scale="0.1 0.1 0.1"
-                position="0 0 0"
-                rotation="0 0 0"
-                id="entity-alcal"
-                shadow="cast: true; receive: true"
-            ></a-entity>
-        </a-marker>
-
-        
-        <!-- Marcador CENTRO -->
-        <a-marker
-            type="pattern"
-            url="patterns/pattern-qr_centr.patt"
-            emitevents="true"
-            id="marker-centr"
-        >
-            <a-entity
-                gltf-model="#modelo-centr"
-                scale="0.1 0.1 0.1"
-                position="0 0 0"
-                rotation="0 0 0"
-                id="entity-centr"
-                shadow="cast: true; receive: true"
-            ></a-entity>
-        </a-marker>
-
-
-        <!-- Marcador INDIA -->
-        <a-marker
-            type="pattern"
-            url="patterns/pattern-qr_india.patt"
-            emitevents="true"
-            id="marker-india"
-        >
-            <a-entity
-                gltf-model="#modelo-india"
-                scale="0.2 0.2 0.2"
-                position="0 0 0"
-                rotation="0 0 0"
-                id="entity-india"
-                shadow="cast: true; receive: true"
-            ></a-entity>
-        </a-marker>
-        
-         <!-- Marcador Jungle Guardian -->
-         <a-marker
-         type="pattern"
-         url="patterns/pattern-qr_jung.patt"
-         emitevents="true"
-         id="marker-jung"
-     >
-         <a-entity
-             gltf-model="#modelo-jung"
-             scale="0.2 0.2 0.2"
-             position="0 0 0"
-             rotation="0 0 0"
-             id="entity-jung"
-             shadow="cast: true; receive: true"
-         ></a-entity>
-     </a-marker>
-
-     <!-- Marcador Pitirre -->
-     <a-marker
-     type="pattern"
-     url="patterns/pattern-qr_piti2.patt"
-     emitevents="true"
-     id="marker-pitirre"
- >
-     <a-entity
-         gltf-model="#modelo-pitirre"
-         scale="0.2 0.2 0.2"
-         position="0 0 0"
-         rotation="0 0 0"
-         id="entity-pitirre"
-         shadow="cast: true; receive: true"
-     ></a-entity>
- </a-marker>
-
-   <!-- Marcador Reloj -->
-   <a-marker
-   type="pattern"
-   url="patterns/pattern-qr_reloj.patt"
-   emitevents="true"
-   id="marker-reloj"
->
-   <a-entity
-       gltf-model="#modelo-reloj"
-       scale="0.1 0.1 0.1"
-       position="0 0 0"
-       rotation="0 0 0"
-       id="entity-reloj"
-       shadow="cast: true; receive: true"
-   ></a-entity>
-</a-marker>
-
-   <!-- Marcador William -->
-   <a-marker
-   type="pattern"
-   url="patterns/pattern-qr_william.patt"
-   emitevents="true"
-   id="marker-willie"
->
-   <a-entity
-       gltf-model="#modelo-willie"
-       scale="0.1 0.1 0.1"
-       position="0 0 0"
-       rotation="0 0 0"
-       id="entity-willie"
-       shadow="cast: true; receive: true"
-   ></a-entity>
-</a-marker>
-
- <!-- Marcador UAGM -->
- <a-marker
- type="pattern"
- url="patterns/pattern-qr_uagm.patt"
- emitevents="true"
- id="marker-uagm"
->
- <a-entity
-     gltf-model="#modelo-uagm"
-     scale="0.2 0.2 0.2"
-     position="0 0 0"
-     rotation="0 0 0"
-     id="entity-uagm"
-     shadow="cast: true; receive: true"
- ></a-entity>
-</a-marker>
-
-        <a-entity camera></a-entity>
-    </a-scene>
-
-    <!-- Script con verificación de carga -->
-    <script src="ar-script.js"></script>
+    // Manejar redimensionamiento de ventana
+    window.addEventListener('resize', () => {
+      if (mindarThree) {
+        const { renderer } = mindarThree;
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      }
+    });
+  </script>
 </body>
 </html>
