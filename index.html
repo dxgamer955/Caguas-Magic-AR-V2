@@ -113,15 +113,15 @@
     // Modelos a cargar
     const models = [
       { id: 'alcal', path: 'models/ALCALDIA.glb', scale: 0.1, targetIndex: 0 },
-      { id: 'c3tk', path: 'models/C3TK.glb', scale: 0.2, targetIndex: 1 },
+      { id: 'c3tk', path: 'models/C3TK.glb', scale: 0.1, targetIndex: 1 },
       { id: 'centr', path: 'models/CENTRO.glb', scale: 0.1, targetIndex: 2 },
       { id: 'star', path: 'models/flamboyan.glb', scale: 0.1, targetIndex: 3 },
-      { id: 'jung', path: 'models/jungle_gurdian.glb', scale: 0.2, targetIndex: 4 },
-      { id: 'india', path: 'models/INDIA.glb', scale: 0.2, targetIndex: 5 },
-      { id: 'morivivi', path: 'models/MORIVIVI.glb', scale: 0.2, targetIndex: 6 },
-      { id: 'pitirre', path: 'models/PITIRRE.glb', scale: 0.2, targetIndex: 7 },
+      { id: 'jung', path: 'models/jungle_gurdian.glb', scale: 0.1, targetIndex: 4 },
+      { id: 'india', path: 'models/INDIA.glb', scale: 0.1, targetIndex: 5 },
+      { id: 'morivivi', path: 'models/MORIVIVI.glb', scale: 0.1, targetIndex: 6 },
+      { id: 'pitirre', path: 'models/PITIRRE.glb', scale: 0.1, targetIndex: 7 },
       { id: 'reloj', path: 'models/RELOJ.glb', scale: 0.1, targetIndex: 8 },
-      { id: 'uagm', path: 'models/UAGM.glb', scale: 0.2, targetIndex: 9 },
+      { id: 'uagm', path: 'models/UAGM.glb', scale: 0.1, targetIndex: 9 },
       { id: 'willie', path: 'models/WILLIAM.glb', scale: 0.1, targetIndex: 10 },
       { id: 'boo', path: 'models/zumbadorcito_noshader.glb', scale: 0.1, targetIndex: 11 }
     ];
@@ -146,11 +146,15 @@
           throw new Error('API de cámara no soportada en este navegador');
         }
         
-        // Crear instancia de MindAR
+        // Inicializar MindAR con configuración mejorada
         mindarThree = new window.MINDAR.IMAGE.MindARThree({
           container: document.getElementById('ar-container'),
-          imageTargetSrc: 'targets.mind', // Asegúrate de que este archivo existe
-          maxTrack: 2 // Máximo de marcadores a detectar simultáneamente
+          imageTargetSrc: './targets.mind',
+          maxTrack: 12, // Empezar con 1 target a la vez
+          uiLoading: 'yes',
+          uiScanning: 'yes',
+          filterMinCF: 0.001,
+          filterBeta: 1000
         });
         
         const { renderer, scene, camera } = mindarThree;
