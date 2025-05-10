@@ -86,6 +86,44 @@
       text-align: center;
       max-width: 80%;
     }
+    
+    #controls-panel {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.7);
+      color: white;
+      padding: 10px;
+      border-radius: 5px;
+      z-index: 1000;
+      display: none;
+    }
+    
+    .control-btn {
+      padding: 8px 15px;
+      margin: 0 5px;
+      background: #3498db;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    
+    .control-btn:hover {
+      background: #2980b9;
+    }
+    
+    #smoothing-controls {
+      position: fixed;
+      top: 100px;
+      left: 10px;
+      background: rgba(0,0,0,0.7);
+      color: white;
+      padding: 10px;
+      border-radius: 5px;
+      z-index: 1000;
+    }
   </style>
 </head>
 <body>
@@ -105,6 +143,25 @@
     <div id="marker-status-ui">🔄 Componentes de marcador: No inicializados</div>
     <div id="camera-status">📷 Cámara: Esperando acceso...</div>
   </div>
+  
+  <!-- Panel de controles -->
+  <div id="controls-panel">
+    <button class="control-btn" id="rotate-x-btn">Rotar X</button>
+    <button class="control-btn" id="rotate-y-btn">Rotar Y</button>
+    <button class="control-btn" id="zoom-in-btn">Acercar</button>
+    <button class="control-btn" id="zoom-out-btn">Alejar</button>
+    <button class="control-btn" id="reset-btn">Reiniciar</button>
+  </div>
+  
+  <!-- Panel de ajustes de suavizado -->
+  <div id="smoothing-controls">
+    <h4>Ajustes de Suavizado</h4>
+    <div>
+      <label for="smoothing-slider">Suavizado: </label>
+      <input type="range" id="smoothing-slider" min="0.1" max="0.9" step="0.05" value="0.3">
+      <span id="smoothing-value">0.3</span>
+    </div>
+  </div>
 
   <!-- Contenedor AR -->
   <div id="ar-container"></div>
@@ -112,24 +169,38 @@
   <script>
     // Modelos a cargar
     const models = [
-      { id: 'alcal', path: 'models/ALCALDIA.glb', scale: 0.1, targetIndex: 0 },
-      { id: 'c3tk', path: 'models/C3TK.glb', scale: 0.1, targetIndex: 1 },
-      { id: 'centr', path: 'models/CENTRO.glb', scale: 0.1, targetIndex: 2 },
-      { id: 'star', path: 'models/flamboyan.glb', scale: 0.1, targetIndex: 3 },
-      { id: 'jung', path: 'models/jungle_gurdian.glb', scale: 0.1, targetIndex: 4 },
-      { id: 'india', path: 'models/INDIA.glb', scale: 0.1, targetIndex: 5 },
+      { id: 'alcal', path: 'models/ALCALDIA.glb', scale: 0.08, targetIndex: 0 },
+      { id: 'c3tk', path: 'models/C3TK.glb', scale: 0.08, targetIndex: 1 },
+      { id: 'centr', path: 'models/CENTRO.glb', scale: 0.08, targetIndex: 2 },
+      { id: 'star', path: 'models/flamboyan.glb', scale: 0.08, targetIndex: 3 },
+      { id: 'jung', path: 'models/jungle_gurdian.glb', scale: 0.08, targetIndex: 4 },
+      { id: 'india', path: 'models/INDIA.glb', scale: 0.06, targetIndex: 5 },
       { id: 'morivivi', path: 'models/MORIVIVI.glb', scale: 0.1, targetIndex: 6 },
       { id: 'pitirre', path: 'models/PITIRRE.glb', scale: 0.1, targetIndex: 7 },
-      { id: 'reloj', path: 'models/RELOJ.glb', scale: 0.1, targetIndex: 8 },
+      { id: 'reloj', path: 'models/RELOJ.glb', scale: 0.08, targetIndex: 8 },
       { id: 'uagm', path: 'models/UAGM.glb', scale: 0.1, targetIndex: 9 },
-      { id: 'willie', path: 'models/WILLIAM.glb', scale: 0.1, targetIndex: 10 },
-      { id: 'boo', path: 'models/zumbadorcito_noshader.glb', scale: 0.1, targetIndex: 11 }
+      { id: 'willie', path: 'models/WILLIAM.glb', scale: 0.08, targetIndex: 10 },
+      { id: 'boo', path: 'models/zumbadorcito_noshader.glb', scale: 0.07, targetIndex: 11 }
     ];
 
     // Variables globales
     let mindarThree;
     let mixers = [];
     const modelMap = {};
+    let activeModel = null;
+    let activeAnchor = null;
+    let originalScales = {};
+    let isDragging = false;
+    let lastTouchX = 0;
+    let lastTouchY = 0;
+    let lastDistance = 0;
+    let isRotatingX = false;
+    let isRotatingY = false;
+    let rotationSpeed = 0.02;
+    let smoothingFactor = 0.3;
+    let targetFPS = 30;
+    let lastRenderTime = 0;
+
     const loader = new THREE.GLTFLoader();
 
     // Función para iniciar AR
@@ -137,6 +208,7 @@
       try {
         const loadingScreen = document.getElementById('loading-screen');
         const errorMessage = document.getElementById('error-message');
+        const controlsPanel = document.getElementById('controls-panel');
         
         // Actualizar estado de la cámara
         document.getElementById('camera-status').textContent = '📷 Cámara: Solicitando acceso...';
@@ -146,15 +218,17 @@
           throw new Error('API de cámara no soportada en este navegador');
         }
         
-        // Inicializar MindAR con configuración mejorada
+        // Inicializar MindAR con configuración mejorada para tracking estable
         mindarThree = new window.MINDAR.IMAGE.MindARThree({
           container: document.getElementById('ar-container'),
           imageTargetSrc: './targets.mind',
-          maxTrack: 12, // Empezar con 1 target a la vez
+          maxTrack: 1,
           uiLoading: 'yes',
           uiScanning: 'yes',
-          filterMinCF: 0.001,
-          filterBeta: 1000
+          filterMinCF: 0.3,       // Más estabilidad pero menos sensibilidad
+          filterBeta: 1000,       // Más suavizado
+          missTolerance: 10,      // Frames para mantener el objeto antes de considerarlo perdido
+          warmupTolerance: 5      // Frames necesarios para inicializar el tracking
         });
         
         const { renderer, scene, camera } = mindarThree;
@@ -162,6 +236,7 @@
         // Configurar renderer
         renderer.setPixelRatio(window.devicePixelRatio);
         renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.outputEncoding = THREE.sRGBEncoding;
         
         // Configurar iluminación
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
@@ -177,8 +252,47 @@
           
           loader.load(modelData.path, (gltf) => {
             const model = gltf.scene;
-            model.scale.set(modelData.scale, modelData.scale, modelData.scale);
-            model.position.set(0, 0, 0);
+            originalScales[modelData.id] = modelData.scale;
+            
+            // Inicializar propiedades para suavizado
+            model.userData = {
+              targetPosition: new THREE.Vector3(),
+              targetQuaternion: new THREE.Quaternion(),
+              smoothedPosition: new THREE.Vector3(),
+              smoothedQuaternion: new THREE.Quaternion(),
+              manualRotation: new THREE.Euler(),
+              originalRotation: new THREE.Euler(),
+              baseScale: modelData.scale,
+              visible: false
+            };
+            
+            model.scale.set(0, 0, 0); // Iniciar invisible
+            model.position.set(0, -1, 0);
+            model.rotation.set(-Math.PI / 2, 0, 0);
+
+            // Agrega helper para depurar alineación (opcional)
+            const helper = new THREE.AxesHelper(0.5);
+            model.add(helper);
+
+            anchor.onTargetFound = () => {
+              activeModel = model;
+              activeAnchor = anchor;
+              controlsPanel.style.display = 'block';
+              model.userData.visible = true;
+              
+              // Reiniciar rotación manual al encontrar el marcador
+              model.userData.manualRotation.set(0, 0, 0);
+            };
+            
+            anchor.onTargetLost = () => {
+              if (activeModel === model) {
+                activeModel = null;
+                activeAnchor = null;
+                controlsPanel.style.display = 'none';
+                model.userData.visible = false;
+              }
+            };
+
             anchor.group.add(model);
             
             // Manejar animaciones si existen
@@ -193,6 +307,7 @@
             }
             
             modelMap[modelData.id] = model;
+            
           }, undefined, (error) => {
             console.error(`Error cargando modelo ${modelData.path}:`, error);
           });
@@ -200,18 +315,67 @@
         
         // Iniciar MindAR
         await mindarThree.start();
+        
         document.getElementById('marker-status-ui').textContent = '✅ Componentes de marcador: Inicializados';
         document.getElementById('camera-status').textContent = '✅ Cámara: Activa';
+        
+        // Configurar controles de rotación y escala
+        setupControls();
+        
+        // Configurar gestos táctiles
+        setupTouchGestures();
         
         // Ocultar pantalla de carga
         loadingScreen.style.display = 'none';
         
-        // Bucle de renderizado
+        // Bucle de renderizado con control de FPS
         const clock = new THREE.Clock();
-        renderer.setAnimationLoop(() => {
-          const delta = clock.getDelta();
-          mixers.forEach(mixer => mixer.update(delta));
-          renderer.render(scene, camera);
+        renderer.setAnimationLoop((timestamp) => {
+          const deltaTime = timestamp - lastRenderTime;
+          const targetInterval = 1000 / targetFPS;
+          
+          if (deltaTime >= targetInterval) {
+            lastRenderTime = timestamp;
+            
+            const delta = clock.getDelta();
+            mixers.forEach(mixer => mixer.update(delta));
+            
+            // Suavizado de posición, rotación y escala
+            for (const id in modelMap) {
+              const model = modelMap[id];
+              const anchor = mindarThree.anchors[models.find(m => m.id === id).targetIndex];
+              
+              if (anchor.group.visible) {
+                // Actualizar objetivos
+                model.userData.targetPosition.copy(anchor.group.position);
+                model.userData.targetQuaternion.copy(anchor.group.quaternion);
+                
+                // Aplicar suavizado
+                model.userData.smoothedPosition.lerp(model.userData.targetPosition, smoothingFactor);
+                model.userData.smoothedQuaternion.slerp(model.userData.targetQuaternion, smoothingFactor);
+                
+                // Aplicar al modelo
+                model.position.copy(model.userData.smoothedPosition);
+                model.quaternion.copy(model.userData.smoothedQuaternion);
+                
+                // Aplicar rotación manual si existe
+                if (model.userData.manualRotation) {
+                  model.rotation.x += model.userData.manualRotation.x;
+                  model.rotation.y += model.userData.manualRotation.y;
+                  model.rotation.z += model.userData.manualRotation.z;
+                }
+                
+                // Suavizado de escala
+                const targetScale = model.userData.baseScale;
+                model.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.1);
+              } else {
+                // Desvanecer modelo cuando no está visible
+                model.scale.lerp(new THREE.Vector3(0, 0, 0), 0.1);
+              }
+            }
+            
+            renderer.render(scene, camera);
+          }
         });
         
       } catch (error) {
@@ -231,6 +395,160 @@
         }
       }
     };
+    
+    // Configurar controles de botones
+    function setupControls() {
+      document.getElementById('rotate-x-btn').addEventListener('click', function() {
+        isRotatingX = !isRotatingX;
+        this.textContent = isRotatingX ? 'Detener Rotación X' : 'Rotar X';
+      });
+      
+      document.getElementById('rotate-y-btn').addEventListener('click', function() {
+        isRotatingY = !isRotatingY;
+        this.textContent = isRotatingY ? 'Detener Rotación Y' : 'Rotar Y';
+      });
+      
+      document.getElementById('zoom-in-btn').addEventListener('click', () => {
+        if (activeModel) {
+          const newScale = activeModel.scale.x * 1.2;
+          activeModel.scale.set(newScale, newScale, newScale);
+          activeModel.userData.baseScale = newScale;
+        }
+      });
+      
+      document.getElementById('zoom-out-btn').addEventListener('click', () => {
+        if (activeModel) {
+          const newScale = Math.max(0.01, activeModel.scale.x * 0.8);
+          activeModel.scale.set(newScale, newScale, newScale);
+          activeModel.userData.baseScale = newScale;
+        }
+      });
+      
+      document.getElementById('reset-btn').addEventListener('click', () => {
+        if (activeModel && activeAnchor) {
+          const modelId = Object.keys(modelMap).find(key => modelMap[key] === activeModel);
+          if (modelId) {
+            const originalScale = originalScales[modelId];
+            activeModel.scale.set(originalScale, originalScale, originalScale);
+            activeModel.userData.baseScale = originalScale;
+            activeModel.userData.manualRotation.set(0, 0, 0);
+            isRotatingX = false;
+            isRotatingY = false;
+            document.getElementById('rotate-x-btn').textContent = 'Rotar X';
+            document.getElementById('rotate-y-btn').textContent = 'Rotar Y';
+          }
+        }
+      });
+      
+      // Control deslizante para ajustar suavizado
+      document.getElementById('smoothing-slider').addEventListener('input', (e) => {
+        smoothingFactor = parseFloat(e.target.value);
+        document.getElementById('smoothing-value').textContent = smoothingFactor.toFixed(2);
+      });
+    }
+    
+    // Configurar gestos táctiles
+    function setupTouchGestures() {
+      const container = document.getElementById('ar-container');
+      
+      // Eventos táctiles para rotación y escala
+      container.addEventListener('touchstart', (e) => {
+        if (!activeModel) return;
+        
+        if (e.touches.length === 1) {
+          isDragging = true;
+          lastTouchX = e.touches[0].clientX;
+          lastTouchY = e.touches[0].clientY;
+          isRotatingX = false;
+          isRotatingY = false;
+          document.getElementById('rotate-x-btn').textContent = 'Rotar X';
+          document.getElementById('rotate-y-btn').textContent = 'Rotar Y';
+        } else if (e.touches.length === 2) {
+          isDragging = false;
+          lastDistance = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+        }
+      });
+      
+      container.addEventListener('touchmove', (e) => {
+        if (!activeModel) return;
+        
+        if (e.touches.length === 1 && isDragging) {
+          const deltaX = e.touches[0].clientX - lastTouchX;
+          const deltaY = e.touches[0].clientY - lastTouchY;
+          
+          activeModel.userData.manualRotation.y += deltaX * 0.01;
+          activeModel.userData.manualRotation.x += deltaY * 0.01;
+          
+          lastTouchX = e.touches[0].clientX;
+          lastTouchY = e.touches[0].clientY;
+        }
+        
+        if (e.touches.length === 2) {
+          const newDistance = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+          
+          const scaleDelta = (newDistance - lastDistance) * 0.005;
+          const currentScale = activeModel.userData.baseScale;
+          const newScale = Math.max(0.01, Math.min(2, currentScale + scaleDelta));
+          
+          activeModel.userData.baseScale = newScale;
+          lastDistance = newDistance;
+        }
+      });
+      
+      container.addEventListener('touchend', (e) => {
+        if (e.touches.length < 2) lastDistance = 0;
+        if (e.touches.length === 0) isDragging = false;
+      });
+      
+      // Eventos de ratón para rotación (para navegadores de escritorio)
+      let isMouseDown = false;
+      container.addEventListener('mousedown', (e) => {
+        if (!activeModel) return;
+        
+        isMouseDown = true;
+        lastTouchX = e.clientX;
+        lastTouchY = e.clientY;
+        isRotatingX = false;
+        isRotatingY = false;
+        document.getElementById('rotate-x-btn').textContent = 'Rotar X';
+        document.getElementById('rotate-y-btn').textContent = 'Rotar Y';
+      });
+      
+      container.addEventListener('mousemove', (e) => {
+        if (isMouseDown && activeModel && activeModel.userData.manualRotation) {
+          const deltaX = e.clientX - lastTouchX;
+          const deltaY = e.clientY - lastTouchY;
+          
+          activeModel.userData.manualRotation.y += deltaX * 0.01;
+          activeModel.userData.manualRotation.x += deltaY * 0.01;
+          
+          lastTouchX = e.clientX;
+          lastTouchY = e.clientY;
+        }
+      });
+      
+      window.addEventListener('mouseup', () => {
+        isMouseDown = false;
+      });
+      
+      // Zoom con rueda del ratón
+      container.addEventListener('wheel', (e) => {
+        if (!activeModel) return;
+        
+        e.preventDefault();
+        const scaleDelta = -e.deltaY * 0.0001;
+        const currentScale = activeModel.userData.baseScale;
+        const newScale = Math.max(0.01, Math.min(2, currentScale + scaleDelta));
+        
+        activeModel.userData.baseScale = newScale;
+      }, { passive: false });
+    }
 
     // Evento para el botón de inicio
     document.getElementById('start-button').addEventListener('click', startAR);
