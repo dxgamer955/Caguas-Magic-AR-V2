@@ -130,11 +130,13 @@
       backdrop-filter: blur(5px);
       max-height: 80vh;
       overflow-y: auto;
+      font-size: 10px !important;
     }
     
     .info-panel h2 {
       margin-top: 0;
       text-align: center;
+      font-size: 10px !important; /* Opcional: tamaño ligeramente mayor para títulos */
     }
     
     .info-panel img {
@@ -175,7 +177,13 @@
       cursor: pointer;
       z-index: 1000;
       display: none;
+      transition: transform 0.3s ease; /* Para animación */
     }
+
+    .info-btn.active {
+  transform: rotate(45deg); /* Girar el botón cuando está activo */
+  background: #f44336; /* Cambiar color a rojo cuando está activo */
+}
     
     .info-btn:hover {
       background: #45a049;
@@ -227,7 +235,7 @@
       { id: 'c3tk', path: 'models/C3TK.glb', scale: 0.08, targetIndex: 1 },
       { id: 'centr', path: 'models/CENTRO.glb', scale: 0.08, targetIndex: 2 },
       { id: 'star', path: 'models/flamboyan.glb', scale: 0.08, targetIndex: 3 },
-      { id: 'jung', path: 'models/jungle_gurdian.glb', scale: 0.08, targetIndex: 4 },
+      { id: 'jungle', path: 'models/jungle_gurdian.glb', scale: 0.08, targetIndex: 4 },
       { id: 'india', path: 'models/INDIA.glb', scale: 0.06, targetIndex: 5 },
       { id: 'morivivi', path: 'models/MORIVIVI.glb', scale: 0.1, targetIndex: 6 },
       { id: 'pitirre', path: 'models/PITIRRE.glb', scale: 0.1, targetIndex: 7 },
@@ -600,16 +608,21 @@ function showInfoPanel(modelId) {
         // Crear paneles de información
         createInfoPanels();
         
-        // Configurar botón de información
-        const infoBtn = document.getElementById('info-btn');
-        infoBtn.addEventListener('click', () => {
-          if (activeModel) {
-            const modelId = Object.keys(modelMap).find(key => modelMap[key] === activeModel);
-            if (modelId) {
-              showInfoPanel(modelId);
-            }
+         // Configurar botón de información
+    const infoBtn = document.getElementById('info-btn');
+    infoBtn.addEventListener('click', () => {
+      if (activeModel) {
+        const modelId = Object.keys(modelMap).find(key => modelMap[key] === activeModel);
+        if (modelId) {
+          const panel = document.getElementById(`${modelId}-info`);
+          if (panel.style.display === 'block') {
+            panel.style.display = 'none'; // Ocultar si está visible
+          } else {
+            showInfoPanel(modelId); // Mostrar si está oculto
           }
-        });
+        }
+      }
+    });
 
         // Actualizar estado de la cámara
         document.getElementById('camera-status').textContent = '📷 Cámara: Solicitando acceso...';
@@ -680,11 +693,12 @@ function showInfoPanel(modelId) {
               activeAnchor = anchor;
               infoBtn.style.display = 'block';
               model.userData.visible = true;
-                        // Mostrar automáticamente el panel de información del modelo
-          const modelId = Object.keys(modelMap).find(key => modelMap[key] === model);
-          if (modelId) {
-            showInfoPanel(modelId);
-          }
+          
+          // Mostrar automáticamente el panel de información del modelo
+          //const modelId = Object.keys(modelMap).find(key => modelMap[key] === model);
+          //if (modelId) {
+          //  showInfoPanel(modelId);
+          //}
           
           // Reiniciar rotación manual al encontrar el marcador
           model.userData.manualRotation.set(0, 0, 0);
