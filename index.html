@@ -117,7 +117,7 @@
     
     .info-panel {
       position: fixed;
-      width: 300px;
+      width: auto;
       background: rgba(0, 0, 0, 0.85);
       border-radius: 15px;
       padding: 15px;
@@ -585,7 +585,7 @@ function showInfoPanel(modelId) {
         panel.style.transform = 'translateX(-50%)';
         
         // Ancho al 75% del viewport con máximo de 600px (para no estirar demasiado en pantallas grandes)
-        const panelWidth = Math.min(window.innerWidth * 0.75, 600);
+        const panelWidth = Math.min(window.innerWidth * 0.95, 600);
         panel.style.width = `${panelWidth}px`;
         
         // Alto automático con scroll si es necesario
