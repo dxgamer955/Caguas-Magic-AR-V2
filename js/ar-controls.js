@@ -41,7 +41,7 @@ function setupTouchGestures() {
       
       const scaleDelta = (newDistance - lastDistance) * 0.005;
       const currentScale = activeModel.userData.baseScale;
-      const newScale = Math.max(0.01, Math.min(2, currentScale + scaleDelta));
+      const newScale = Math.max(0.01, Math.min(1, currentScale + scaleDelta));
       
       activeModel.userData.baseScale = newScale;
       lastDistance = newDistance;
