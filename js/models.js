@@ -42,7 +42,10 @@ async function loadModels(mindarThree) {
         anchor.onTargetFound = () => {
           activeModel = model;
           activeAnchor = anchor;
+          document.getElementById('zoom-in-btn').style.display = 'block';
+          document.getElementById('zoom-out-btn').style.display = 'block';
           document.getElementById('info-btn').style.display = 'block';
+          document.getElementById('reset-btn').style.display = 'block';
           model.userData.visible = true;
           model.userData.manualRotation.set(0, 0, 0);
         };
@@ -51,7 +54,10 @@ async function loadModels(mindarThree) {
           if (activeModel === model) {
             activeModel = null;
             activeAnchor = null;
+            document.getElementById('zoom-in-btn').style.display = 'none';
+            document.getElementById('zoom-out-btn').style.display = 'none';
             document.getElementById('info-btn').style.display = 'none';
+            document.getElementById('reset-btn').style.display = 'none';
             model.userData.visible = false;
             
             document.querySelectorAll('.info-panel').forEach(panel => {

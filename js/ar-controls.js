@@ -92,3 +92,30 @@ function setupTouchGestures() {
     activeModel.userData.baseScale = newScale;
   }, { passive: false });
 }
+/////
+// Controladores para los botones de zoom
+document.getElementById('zoom-in-btn')?.addEventListener('click', () => {
+  if (!activeModel) return;
+  
+  const currentScale = activeModel.userData.baseScale;
+  const newScale = Math.min(2, currentScale + 0.1);
+  activeModel.userData.baseScale = newScale;
+});
+
+document.getElementById('zoom-out-btn')?.addEventListener('click', () => {
+  if (!activeModel) return;
+  
+  const currentScale = activeModel.userData.baseScale;
+  const newScale = Math.max(0.05, currentScale - 0.1);
+  activeModel.userData.baseScale = newScale;
+});
+
+document.getElementById('reset-btn')?.addEventListener('click', () => {
+  if (!activeModel) return;
+
+  // Resetear rotación
+  activeModel.userData.manualRotation.set(0, 0, 0);
+
+  // Resetear escala a la base
+  activeModel.userData.baseScale = originalScales[Object.keys(modelMap).find(key => modelMap[key] === activeModel)] || 0.1;
+});

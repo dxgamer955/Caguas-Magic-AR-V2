@@ -24,7 +24,7 @@
 
   <!-- Panel de estado -->
   <div id="status-panel">
-    <h3>-- Estado del Sistema AR --</h3>
+    <h3>- Estado del Sistema AR -</h3>
     <div id="aframe-status">✅ Three.js: Cargado</div>
     <div id="mindar-status">✅ MindAR: Cargado</div>
     <div id="marker-status-ui">🔄 Componentes de marcador: No inicializados</div>
@@ -35,8 +35,14 @@
   <button class="info-btn" id="info-btn">i</button>
 
   <!-- Botones de acción -->
-  <button class="action-btn" id="reset-btn" style="bottom: 90px; right: 20px;">↻</button>
+  <button class="action-btn" id="zoom-in-btn" style="bottom: 90px; left: 50%; transform: translateX(-50%); margin-left: -60px;">+</button>
+  <button class="action-btn" id="zoom-out-btn" style="bottom: 90px; left: 50%; transform: translateX(-50%); margin-left: 60px;">-</button>
+  <button class="action-btn" id="reset-btn" style="bottom: 30px; left: 50%; transform: translateX(-50%);">↺</button>
+
+
+  <!--
   <button class="action-btn" id="sound-btn" style="bottom: 160px; right: 20px;">🔊</button>
+  -->
 
   <!-- Paneles de información -->
   <div id="morivivi-info" class="info-panel"></div>

@@ -50,6 +50,13 @@ const startAR = async () => {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       throw new Error('API de cámara no soportada en este navegador');
     }
+
+    // Mostrar botones de zoom
+    /*
+    document.getElementById('zoom-in-btn').style.display = 'block';
+    document.getElementById('zoom-out-btn').style.display = 'block';
+    */
+
     
     // Inicializar MindAR
     mindarThree = new window.MINDAR.IMAGE.MindARThree({
