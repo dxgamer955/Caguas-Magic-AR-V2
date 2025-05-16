@@ -15,8 +15,18 @@ let rotationSpeed = 0.02;
 let smoothingFactor = 0.3;
 let targetFPS = 30;
 let lastRenderTime = 0;
+let selectedMaxTrack = 1;
 
 const loader = new THREE.GLTFLoader();
+
+window.addEventListener('load', () => {
+  const modal = document.getElementById('tracker-selection-modal');
+  setTimeout(() => {
+    modal.style.opacity = '1';
+    modal.style.transform = 'scale(1)';
+  }, 200);
+});
+
 
 // Función para iniciar AR
 const startAR = async () => {
@@ -51,25 +61,20 @@ const startAR = async () => {
       throw new Error('API de cámara no soportada en este navegador');
     }
 
-    // Mostrar botones de zoom
-    /*
-    document.getElementById('zoom-in-btn').style.display = 'block';
-    document.getElementById('zoom-out-btn').style.display = 'block';
-    */
-
-    
-    // Inicializar MindAR
+    // Inicializar MindAR con valor dinámico
     mindarThree = new window.MINDAR.IMAGE.MindARThree({
-      container: document.getElementById('ar-container'),
-      imageTargetSrc: './targets.mind',
-      maxTrack: 1,
-      uiLoading: 'yes',
-      uiScanning: 'yes',
-      filterMinCF: 0.3,
-      filterBeta: 1000,
-      missTolerance: 10,
-      warmupTolerance: 5
+    container: document.getElementById('ar-container'),
+    imageTargetSrc: './targets.mind',
+    maxTrack: selectedMaxTrack,
+    uiLoading: 'yes',
+    uiScanning: 'yes',
+    filterMinCF: 0.3,
+    filterBeta: 1000,
+    missTolerance: 10,
+    warmupTolerance: 5
     });
+
+
     
     const { renderer, scene, camera } = mindarThree;
     
@@ -137,13 +142,35 @@ const startAR = async () => {
   }
 };
 
-// Evento para el botón de inicio
-document.getElementById('start-button').addEventListener('click', startAR);
-
 // Manejar redimensionamiento de ventana
 window.addEventListener('resize', () => {
   if (mindarThree) {
     const { renderer } = mindarThree;
     renderer.setSize(window.innerWidth, window.innerHeight);
   }
+});
+
+// Slider y tracker slider value controller
+const initialSlider = document.getElementById('initial-tracker-slider');
+const initialValue = document.getElementById('initial-tracker-value');
+
+initialSlider.addEventListener('input', () => {
+  initialValue.textContent = initialSlider.value;
+});
+
+document.getElementById('confirm-trackers-btn').addEventListener('click', () => {
+  selectedMaxTrack = parseInt(initialSlider.value);
+
+  // Cerrar con animación
+  const screen = document.getElementById('tracker-selection-screen');
+  screen.style.opacity = '0';
+  setTimeout(() => {
+    screen.style.display = 'none';
+    document.getElementById('loading-screen').classList.add('active');
+  }, 300);
+  document.getElementById('start-button').addEventListener('click', startAR);
+
+  // Ocultar panel inicial
+  document.getElementById('tracker-selection-screen').style.display = 'none';
+
 });
